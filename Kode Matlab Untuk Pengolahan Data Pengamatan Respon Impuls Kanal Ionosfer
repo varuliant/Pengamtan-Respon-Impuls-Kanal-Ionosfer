@@ -1,0 +1,594 @@
+clear all;
+clc;close all;
+% addpath("C:\Users\IonRad\Desktop\FInale CIR Design");
+addpath("C:\Users\varul\OneDrive\Documents\MATLAB\ChannelSounder");
+%addpath("F:\2021\Ekperimen CIR\DataCIR Rx Bandung\RTL_SDR Pavilion");
+ 
+% masuk ke folder data yang akan dibaca
+% cd 'D:\A. KULIAH S3\7. ITB-S3 Semester 7\Feb2022'
+% cd 'D:\A. KULIAH S3\7. ITB-S3 Semester 7\December21'
+%% Pilih file data CIR  
+%%%%%% 'RTL7102_2M2sps_20122021_1244.dat'
+ 
+[file_cir,path] = uigetfile('*.dat'); % memiliih dataCIR
+pisahnama=split(file_cir,"_");
+file_cir2=join(['Rtl_220Ksps_' pisahnama{3} '_' pisahnama{4}]);
+tgl=convertCharsToStrings(pisahnama{3});
+waktu=convertCharsToStrings(pisahnama{4});
+waktu=strrep(waktu,'.dat','');
+addpath(path);
+ 
+%% Buka file rekaman RTL
+% #1. 2MSPS Rx Signal 
+RxRtl1=baca_complex_gnu(file_cir);
+FsRtl1=2200000;
+t_RxRtl1=(0:numel(RxRtl1)-1)/FsRtl1;
+figure(1)
+subplot(311);plot(t_RxRtl1,RxRtl1)
+title(['Rx' tgl waktu ])
+ 
+ 
+% #2. 220KSPS Rx Signal
+RxRtl2=baca_complex_gnu(file_cir2);
+FsRtl2=220000;
+t_RxRtl2=(0:numel(RxRtl2)-1)/FsRtl2;
+subplot(312);plot(t_RxRtl2,RxRtl2)
+%title('Rx Rtl 220KSsps Signal')
+subplot(313);pspectrum(RxRtl2,FsRtl2,'spectrogram', ...
+    'FrequencyLimits',[0 50000],'TimeResolution',0.1)
+view([90 90])
+ 
+%% POTONG File Recorded
+waktu_awal=0.2436;   %waktu_awal=1.471;
+%waktu_akhir=5.9;  %waktu_akhir=1.496;
+waktu_akhir=waktu_awal+3.05;
+ 
+bin_awal=waktu_awal*FsRtl1;   % ubah dari detik ke bin merujuk nilai Fs
+bin_akhir=waktu_akhir*FsRtl1;
+Rx1_cut=RxRtl1(bin_awal:bin_akhir,1);
+t_Rx1cut=(0:numel(Rx1_cut)-1)/FsRtl1;
+ 
+bin_awal=waktu_awal*FsRtl2;   % ubah dari detik ke bin merujuk nilai Fs
+bin_akhir=waktu_akhir*FsRtl2;
+Rx2_cut=RxRtl2(bin_awal:bin_akhir,1);
+t_Rx2cut=(0:numel(Rx2_cut)-1)/FsRtl2;
+figure(2); pspectrum(Rx2_cut,FsRtl2,'spectrogram', ...
+    'FrequencyLimits',[0 50000],'TimeResolution',0.1)
+view([90 90])
+ 
+ 
+%% BAND PASS FILTER
+Bawah_BPF=1200;
+Atas_BPF=2400;
+Rx2_BPF=bandpass(Rx2_cut,[Bawah_BPF Atas_BPF],FsRtl2); %Untuk 17122021 Pukul 06:59
+%Rx2_BPF=bandpass(Rx2_cut,[1000 3000],FsRtl2);
+%Rx2_BPF=bandpass(Rx2_cut,[700 2500],FsRtl2); % Untuk Februari 2022
+%Rx2_BPF=bandpass(Rx2_cut,[1000 3400],FsRtl2);
+t_Rx2BPF=(0:numel(Rx2_BPF)-1)/FsRtl2;
+ 
+% Rx2_BPF=bandpass(Rx2_cut,[1000 12000],FsRtl2);  % Kasus shift Freq 29122021_2134
+% t_Rx2BPF=(0:numel(Rx2_BPF)-1)/FsRtl2;
+ 
+figure(3)
+subplot(211);plot(t_Rx2BPF,Rx2_BPF)
+title('BPF RxCut 220Ksps signal')
+subplot(212);pspectrum(Rx2_BPF,FsRtl2,'spectrogram', ...
+    'FrequencyLimits',[Bawah_BPF Atas_BPF],'TimeResolution',0.1)  % [ 0 3000]
+view([90 90])
+ 
+%% Ref signal with  2M2sps
+Ref=baca_complex_gnu('OutputTx2M2sps400Z_8B4Zx6.dat');
+FsR=2200000;
+t_Ref=(0:numel(Ref)-1)/FsR;
+% figure(4);
+% subplot(221);plot(t_Ref,Ref);title('2Msps Sounding 5 Chirp Signal ')
+ 
+waktu_awal=1.188345;   %waktu_awal=1.471;
+waktu_akhir=1.1903;  %waktu_akhir=1.496;
+bin_awal=waktu_awal*FsR;   % ubah dari detik ke bin merujuk nilai Fs
+bin_akhir=waktu_akhir*FsR;
+Single_Chirp=Ref(bin_awal:bin_akhir,1);
+t_Chirp=(0:numel(Single_Chirp)-1)/FsR;
+% figure();
+% subplot(222);plot(t_Chirp,Single_Chirp);title('Single Chirp Signal 2Msps')
+ 
+%Ref signal with samp rate 220Ksps
+Ref220=baca_complex_gnu('OutputTx220Ksps400Z_8B4Zx6.dat');
+FsR2=220000;
+t_Ref220=(0:numel(Ref220)-1)/FsR2;
+ 
+% subplot(223);plot(t_Ref220,Ref220);title('220 Ksps Sounding 5 Chirp Signal');
+ 
+waktu_awal=1.18825;   %waktu_awal=1.471;
+waktu_akhir=1.19025;  %waktu_akhir=1.496;
+bin_awal=waktu_awal*FsR2;   % ubah dari detik ke bin merujuk nilai Fs
+bin_akhir=waktu_akhir*FsR2;
+Chirp220=Ref220(bin_awal:bin_akhir,1);
+t_Chirp220=(0:numel(Chirp220)-1)/FsR2;
+ 
+% subplot(224);plot(t_Chirp220,Chirp220);title('Single Chirp Signal 220Ksps')
+ 
+ 
+ 
+%% RECOVERY PHASE OF REAL rx Signal
+RxRtl1_square=RxRtl1.^2; % Metoda Recovery sinyal BPSK secara sederhana
+Rx1_cut_square=Rx1_cut.^2;
+RxRtl2_square=RxRtl2.^2; % Metoda Recovery sinyal BPSK secara sederhana
+Rx2_cut_square=Rx2_cut.^2;
+Rx2_BPF_square=Rx2_BPF.^2;
+ 
+ 
+ 
+%% CROSCORR USING FFT IN FREQ DOMAIN  TANPA Recovery Phase
+ 
+% Serupa dengan nilai Correlation Length
+corrLength=length(Rx2_BPF)+length(Chirp220)-1;
+%atau
+N=length(Rx2_BPF)+length(Chirp220)-1;
+ 
+% Remove DC Komponen
+x2 = Rx2_BPF - mean(Rx2_BPF);
+y2 = Chirp220.^2 - mean(Chirp220.^2);
+ 
+% %Input Signal-1 Spectra and 2
+% X=fft(x2,corrLength); 
+% Y=fft(y2,corrLength);
+% %%Cross Correlation in Frequency Domain Hadamard Product
+% % Correlation with normalize signal
+PDP_xyS2 = ifft(fft(x2,N) .* conj(fft(y2,N))) / (norm(x2) * norm(y2));
+ 
+%Time Axis
+Ts=1/FsRtl2;
+t_phi=0:Ts:(length(PDP_xyS2)-1)*Ts;
+ 
+% Ploting Cross Correlated Signal Single Window
+figure()
+plot(t_phi,db(abs(PDP_xyS2)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title(['Channel Impulse Response h(t,tau)'  tgl waktu ] );
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+ 
+% Ploting Cross Correlated Signal Multi Window
+figure
+subplot(411);plot(t_phi,db(abs(PDP_xyS2)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title('Recovery Phase and Single Chirp with Absolute Single Chirp Fliped');
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+ 
+subplot(412);plot(t_phi,db(abs(PDP_xyS2)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title('Recovery Phase and Single Chirp with Absolute Single Chirp Fliped');
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+subplot(413);plot(t_phi,abs(PDP_xyS2));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title('Recovery Phase and Single Chirp with Absolute Single Chirp Fliped');
+set(gca, 'YDir','reverse')
+grid
+subplot(414);plot(t_phi,db(abs(PDP_xyS2.^2)));
+xlabel('Time in seconds'); ylabel('Magnitude');
+title('Recovery Phase and Single Chirp with Absolute Single Chirp in dB');
+grid
+ 
+ 
+ 
+ 
+%% DOPPLER SPECTRUM 
+ 
+potong_awal1= 1.320;  % manual choose
+potong_akhir= potong_awal1 + 0.2; % IDE: dibuat 5 kali sesuai dengan sususnan sinyal chirp
+FsCor= 220000  ;
+awal_dop=potong_awal1*FsCor;   % ubah dari detik ke bin merujuk nilai Fs
+akhir_dop=potong_akhir*FsCor;
+% ht_single_one=PDP_xyS2(awal_dop:akhir_dop,1);
+% ht_single = ht_single_one - mean(ht_single_one); % Remove DC Komponen
+ht_single=PDP_xyS2(awal_dop:akhir_dop,1);
+t_ht_single=(0:numel(ht_single)-1)/FsCor;
+figure()
+subplot(311);plot(t_ht_single,db(abs(ht_single)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title(['Single Channel Impulse Response h(t,tau) #1'  tgl waktu ] );
+set(gca, 'YDir','reverse')
+grid
+ 
+% N=length(ht_single)+length(ht_single)-1;
+% %AutoCorrelation h(t,tau) dalam Frequency Domain Hadamard Product
+%Autokor_hn = ifft(fft(ht_single,N) .* conj(fft(ht_single,N))) / (norm(ht_single) * norm(ht_single));
+Autokor_hn = ifft(fft(ht_single) .* conj(fft(ht_single))) / (norm(ht_single) * norm(ht_single));
+ 
+%Time Axis
+Ts=1/FsRtl2;
+t_phi=0:Ts:(length(Autokor_hn)-1)*Ts;
+subplot(312);plot(t_phi,db(abs(Autokor_hn)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Amplitude');
+title('Autokorelasi h(t,tau)');
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+ 
+ 
+% Proses FFT untuk mendapatkan Doopler Spectrum
+NFFT=FsCor;
+L=length(Autokor_hn);         
+X=fftshift(fft(Autokor_hn,NFFT));         
+Px_single=X.*conj(X)/(NFFT*L); %Power of each freq components       
+fVals_single=NFFT*(-NFFT/2:NFFT/2-1)/NFFT;        
+[max_value,index_maks]=max(Px_single);  % Cari puncak frekuensi  center nya
+str=[num2str(fVals_single(index_maks)) ' Hz'];
+subplot(313);plot(fVals_single,Px_single,fVals_single(index_maks),Px_single(index_maks),'pr');      
+text(fVals_single(index_maks),Px_single(index_maks),str)
+%xlim([1800 1950]) 
+ 
+% Find the half height - midway between min and max y values.
+halfHeight = (min(Px_single) + max(Px_single)) / 2;
+% Find the half max value.
+halfMax = (min(Px_single) + max(Px_single)) / 2;
+% Find where the data first drops below half the max.
+index1 = find(Px_single >= halfMax, 1, 'first');
+% Find where the data last rises above half the max.
+index2 = find(Px_single >= halfMax, 1, 'last');
+fwhm1 = index2-index1 + 1; % FWHM in indexes.
+% OR, if you have an x vector
+fwhmx1 = fVals_single(index2) - fVals_single(index1);
+ 
+title(['PSD or Doppler Spectrum dari Autokorelasi h(t,tau) ' 'FWHM=' num2str(fwhm1) 'Hz']);         
+xlabel('Frequency (Hz)')         
+ylabel('Power');
+ 
+ 
+% findpeaks(Px_single,fVals_single,'MinPeakProminence',0.02,'Annotate','extents','WidthReference','halfheight')
+% [pks,locs,w,p]= findpeaks(Px_single,fVals_single,'MinPeakProminence', 0.02,'Annotate','extents','WidthReference','halfheight');
+% %xlim([1800 1950])  
+% title('Signal Peak Widths')
+ 
+%%%------------------------ KEDUA ------------------
+potong_awal=potong_awal1+0.38;  %1.343    ;  % manual choose
+potong_akhir= potong_awal + 0.38; % IDE: dibuat 5 kali sesuai dengan sususnan sinyal chirp
+FsCor= 220000  ;
+awal_dop2=potong_awal*FsCor;   % ubah dari detik ke bin merujuk nilai Fs
+akhir_dop2=potong_akhir*FsCor;
+ht_single2=PDP_xyS2(awal_dop2:akhir_dop2,1);
+t_ht_single2=(0:numel(ht_single2)-1)/FsCor;
+figure()
+subplot(311);plot(t_ht_single2,db(abs(ht_single2)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title(['Single Channel Impulse Response h(t,tau) #2'  tgl waktu ] );
+set(gca, 'YDir','reverse')
+grid
+ 
+% N=length(ht_single)+length(ht_single)-1;
+% %AutoCorrelation h(t,tau) dalam Frequency Domain Hadamard Product
+%Autokor_hn2 = ifft(fft(ht_single2,N) .* conj(fft(ht_single2,N))) / (norm(ht_single2) * norm(ht_single2));
+Autokor_hn2 = ifft(fft(ht_single2) .* conj(fft(ht_single2))) / (norm(ht_single2) * norm(ht_single2));
+ 
+%Time Axis
+Ts=1/FsRtl2;
+t_phi=0:Ts:(length(Autokor_hn2)-1)*Ts;
+subplot(312);plot(t_phi,db(abs(Autokor_hn2)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Amplitude');
+title('Autokorelasi h(t,tau)');
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+ 
+% Proses FFT untuk mendapatkan Doopler Spectrum
+NFFT=FsCor;
+L=length(Autokor_hn2);         
+X2=fftshift(fft(Autokor_hn2,NFFT));         
+Px_single2=X2.*conj(X2)/(NFFT*L); %Power of each freq components       
+fVals_single2=FsCor*(-NFFT/2:NFFT/2-1)/NFFT;
+[max_value2,index_maks2]=max(Px_single2);  % Cari puncak frekuensi  center nya
+str=[num2str(fVals_single2(index_maks2)) ' Hz'];
+subplot(313);plot(fVals_single2,Px_single2,fVals_single2(index_maks2),Px_single2(index_maks2),'pr');      
+text(fVals_single2(index_maks2),Px_single2(index_maks2),str)
+%xlim([1800 1950])   
+title('PSD or Doppler Spectrum dari Autokorelasi h(t,tau) ');         
+xlabel('Frequency (Hz)')         
+ylabel('Power');
+ 
+ 
+% findpeaks(Px_single2,fVals_single2,'MinPeakProminence',0.02,'Annotate','extents','WidthReference','halfheight')
+% figure()
+% [pks,locs,w,p]= findpeaks(Px_single2,fVals_single2,'MinPeakProminence', 0.02,'Annotate','extents','WidthReference','halfheight');
+%xlim([1800 1950])  
+title('Signal Peak Widths')
+ 
+%%%------------------------ KETIGA ------------------
+potong_awal=potong_awal1+(0.38*2)   ;  % manual choose
+potong_akhir= potong_awal + 0.38; % IDE: dibuat 5 kali sesuai dengan sususnan sinyal chirp
+FsCor= 220000  ;
+awal_dop3=potong_awal*FsCor;   % ubah dari detik ke bin merujuk nilai Fs
+akhir_dop3=potong_akhir*FsCor;
+ht_single3=PDP_xyS2(awal_dop3:akhir_dop3,1);
+t_ht_single3=(0:numel(ht_single3)-1)/FsCor;
+figure()
+subplot(311);plot(t_ht_single3,db(abs(ht_single3)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title(['Single Channel Impulse Response h(t,tau)  #3'  tgl waktu ] );
+set(gca, 'YDir','reverse')
+grid
+ 
+% N=length(ht_single)+length(ht_single)-1;
+% %AutoCorrelation h(t,tau) dalam Frequency Domain Hadamard Product
+%Autokor_hn2 = ifft(fft(ht_single2,N) .* conj(fft(ht_single2,N))) / (norm(ht_single2) * norm(ht_single2));
+Autokor_hn3 = ifft(fft(ht_single3) .* conj(fft(ht_single3))) / (norm(ht_single3) * norm(ht_single3));
+ 
+%Time Axis
+Ts=1/FsRtl2;
+t_phi=0:Ts:(length(Autokor_hn3)-1)*Ts;
+subplot(312);plot(t_phi,db(abs(Autokor_hn3)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Amplitude');
+title('Autokorelasi h(t,tau)');
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+ 
+% Proses FFT untuk mendapatkan Doopler Spectrum
+NFFT=FsCor;
+L=length(Autokor_hn3);         
+X3=fftshift(fft(Autokor_hn3,NFFT));         
+Px_single3=X3.*conj(X3)/(NFFT*L); %Power of each freq components       
+fVals_single3=FsCor*(-NFFT/2:NFFT/2-1)/NFFT;        
+[max_value3,index_maks3]=max(Px_single3);  % Cari puncak frekuensi  center nya
+str=[num2str(fVals_single3(index_maks3)) ' Hz'];
+subplot(313);plot(fVals_single3,Px_single3,fVals_single3(index_maks3),Px_single3(index_maks3),'pr');      
+text(fVals_single3(index_maks3),Px_single3(index_maks3),str)
+%xlim([1800 1950]);
+title('PSD or Doppler Spectrum dari Autokorelasi h(t,tau) ');         
+xlabel('Frequency (Hz)')         
+ylabel('Power');
+ 
+%%%------------------------ KEEMPAT ------------------
+potong_awal=potong_awal1 +(0.38*3)   ;  % manual choose
+potong_akhir= potong_awal + 0.38; % IDE: dibuat 5 kali sesuai dengan sususnan sinyal chirp
+FsCor= 220000  ;
+awal_dop4=potong_awal*FsCor;   % ubah dari detik ke bin merujuk nilai Fs
+akhir_dop4=potong_akhir*FsCor;
+ht_single4=PDP_xyS2(awal_dop4:akhir_dop4,1);
+t_ht_single4=(0:numel(ht_single4)-1)/FsCor;
+figure()
+subplot(311);plot(t_ht_single4,db(abs(ht_single4)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title(['Single Channel Impulse Response h(t,tau)  #4'  tgl waktu ] );
+set(gca, 'YDir','reverse')
+grid
+ 
+% N=length(ht_single)+length(ht_single)-1;
+% %AutoCorrelation h(t,tau) dalam Frequency Domain Hadamard Product
+%Autokor_hn4 = ifft(fft(ht_single4,N) .* conj(fft(ht_single4,N))) / (norm(ht_single4) * norm(ht_single4));
+Autokor_hn4 = ifft(fft(ht_single4) .* conj(fft(ht_single4))) / (norm(ht_single4) * norm(ht_single4));
+ 
+%Time Axis
+Ts=1/FsRtl2;
+t_phi=0:Ts:(length(Autokor_hn4)-1)*Ts;
+subplot(312);plot(t_phi,db(abs(Autokor_hn4)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Amplitude');
+title('Autokorelasi h(t,tau)');
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+ 
+% Proses FFT untuk mendapatkan Doopler Spectrum
+NFFT=FsCor;
+L=length(Autokor_hn4);         
+X4=fftshift(fft(Autokor_hn4,NFFT));         
+Px_single4=X4.*conj(X4)/(NFFT*L); %Power of each freq components       
+fVals_single4=FsCor*(-NFFT/2:NFFT/2-1)/NFFT;
+[max_value4,index_maks4]=max(Px_single4);  % Cari puncak frekuensi  center nya
+str=[num2str(fVals_single4(index_maks4)) ' Hz'];
+subplot(313);plot(fVals_single4,Px_single4,fVals_single4(index_maks4),Px_single4(index_maks4),'pr');      
+text(fVals_single4(index_maks4),Px_single4(index_maks4),str)
+%xlim([1800 1950]); 
+ 
+% Find the half height - midway between min and max y values.
+halfHeight = (min(Px_single4) + max(Px_single4)) / 2;
+% Find the half max value.
+halfMax = (min(Px_single4) + max(Px_single4)) / 2;
+% Find where the data first drops below half the max.
+index1 = find(Px_single4 >= halfMax, 1, 'first');
+% Find where the data last rises above half the max.
+index2 = find(Px_single4 >= halfMax, 1, 'last');
+fwhm = index2-index1 + 1; % FWHM in indexes.
+% OR, if you have an x vector
+fwhmx = fVals_single4(index2) - fVals_single4(index1);
+ 
+title(['PSD or Doppler Spectrum dari Autokorelasi h(t,tau) ' 'FWHMX=' num2str(fwhm) 'Hz']);         
+xlabel('Frequency (Hz)')         
+ylabel('Power');
+ 
+ 
+ 
+ 
+%%%------------------------ KELIMA ------------------
+potong_awal=potong_awal1 +(0.38*4)  ;  % manual choose
+potong_akhir= potong_awal + 0.1; % IDE: dibuat 5 kali sesuai dengan sususnan sinyal chirp
+FsCor= 220000  ;
+awal_dop5=potong_awal*FsCor;   % ubah dari detik ke bin merujuk nilai Fs
+akhir_dop5=potong_akhir*FsCor;
+ht_single5=PDP_xyS2(awal_dop5:akhir_dop5,1);
+t_ht_single5=(0:numel(ht_single5)-1)/FsCor;
+figure()
+subplot(311);plot(t_ht_single5,db(abs(ht_single5)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Magnitude');
+title(['Single Channel Impulse Response h(t,tau)  #5'  tgl waktu ] );
+set(gca, 'YDir','reverse')
+grid
+ 
+% N=length(ht_single)+length(ht_single)-1;
+% %AutoCorrelation h(t,tau) dalam Frequency Domain Hadamard Product
+%Autokor_hn2 = ifft(fft(ht_single5,N) .* conj(fft(ht_single5,N))) / (norm(ht_single5) * norm(ht_single5));
+Autokor_hn5 = ifft(fft(ht_single5) .* conj(fft(ht_single5))) / (norm(ht_single5) * norm(ht_single5));
+ 
+%Time Axis
+Ts=1/FsRtl2;
+t_phi=0:Ts:(length(Autokor_hn5)-1)*Ts;
+subplot(312);plot(t_phi,db(abs(Autokor_hn5)));  % catatan (db(...) mengubah menjadi dB axis
+xlabel('Time in seconds'); ylabel('Amplitude');
+title('Autokorelasi h(t,tau)');
+set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+grid
+ 
+% Proses FFT untuk mendapatkan Doopler Spectrum
+NFFT=FsCor;
+L=length(Autokor_hn5);         
+X5=fftshift(fft(Autokor_hn5,NFFT));         
+Px_single5=X5.*conj(X5)/(NFFT*L); %Power of each freq components       
+fVals_single5=FsCor*(-NFFT/2:NFFT/2-1)/NFFT;
+[max_value5,index_maks5]=max(Px_single5);  % Cari puncak frekuensi  center nya
+str=[num2str(fVals_single5(index_maks5)) ' Hz'];
+subplot(313);plot(fVals_single5,Px_single5,fVals_single5(index_maks5),Px_single5(index_maks5),'pr');      
+text(fVals_single5(index_maks5),Px_single5(index_maks5),str)
+%xlim([1800 1950]);  
+title('PSD or Doppler Spectrum dari Autokorelasi h(t,tau) ');         
+xlabel('Frequency (Hz)')         
+ylabel('Power');
+ 
+ 
+ 
+%% Buat Susunan Respon Impuls Kanal 
+%kontur_hasil=zeros(length(t_akanFFT),5);
+%figure()
+for wk=1:5
+    try
+    potong_awal_iter= potong_awal1  ;
+    bin_awl=(potong_awal_iter+(0.39*(wk-1)))*FsCor;
+    bin_ahr=(0.1*FsCor)+ bin_awl;  % bin akhir juga menentukan durasi/length observasi bisa dikurangi
+   
+    temp_ht=PDP_xyS2(bin_awl:bin_ahr,1);
+    kontur_hasil(:,wk)=temp_ht;  
+    catch me
+    end
+ end
+ 
+%Plot multiple 2D plot in one frame
+t_plottiga=(0:numel(kontur_hasil(:,1))-1)/FsCor;
+figure()
+plot3(t_plottiga,ones(numel(t_plottiga),5).*[0 1 2 3 4 ],[db(abs(kontur_hasil(:,1))), db(abs(kontur_hasil(:,2))), db(abs(kontur_hasil(:,3))), db(abs(kontur_hasil(:,4))), db(abs(kontur_hasil(:,5))) ]);
+grid on
+zlabel('Normalize Power') 
+set(gca, 'ZDir','reverse'); set(gca,'ZTickLabel',[]); set(gca,'YTickLabel',[1 2 3 4 5]);
+ 
+ 
+% Untuk gambar per impuls yang akan disimpan dan dibuat animasi
+for jk=1:5
+    f = figure;  
+    f.Position = [50 350 1280 330]; 
+    tmpX = db(abs(kontur_hasil(:,jk)));  
+    plot(t_plottiga,tmpX);
+    judul=join(['CIR #' num2str(jk) tgl waktu  ]);
+    title(judul);
+    xlabel('Cross-Correlation Time Lag (second)'); ylabel('Normalized Power');
+    hold on
+    % Convert data sehingga dapat dilihat maksimum peak bukan minimum
+    DataInv = 1.01*max(tmpX) - tmpX;
+%     % Mencari peaks dengan batas waktu sesuai resolusi time delay yakni 0,0001 
+%     [pks,locs] = findpeaks(DataInv,FsRtl2,'MinPeakDistance',0.0001);     
+%     % sort dari yang tertinggi dulu
+%     matrik_peak=[locs pks];
+%     mat_sort=sortrows(matrik_peak,-2);
+%     % cari indeks di plot tiga nya
+%     idx_peak= interp1(t_plottiga,1:length(t_plottiga),mat_sort(1:12,1));
+%     val_peaks=tmpX(idx_peak);
+%     plot(t_plottiga(idx_peak),val_peaks,'ro');
+%     
+%     %add text nilai waktu di graphik
+%   text(t_plottiga(idx_peak), val_peaks, compose('%f',  mat_sort(1:12,1)), 'HorizontalAlign','center', 'VerticalAlign','bottom')
+%   text(t_plottiga(idx_peak), val_peaks, compose('%0.2f',  val_peaks), 'HorizontalAlign','center', 'VerticalAlign','top')
+%         
+    set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+    
+    % Zoom in pada plot impuls target saja
+    [M,I] = min(db(abs(kontur_hasil(:,jk))));  % cari indeks peak sinyal (reverse0
+    bts_b=t_plottiga(I)-0.01;
+    bts_a=t_plottiga(I)+0.01;
+    xlim([bts_b bts_a])
+    set(gca, 'YTickLabel', [])
+ 
+    grid on 
+    
+    %simpan sebagai gambar
+%     namagbr=join([tgl waktu num2str(jk) '.png']);
+%     saveas(gcf,namagbr)
+end
+ 
+% %% ==============================================================
+% % Buat Susunan Respon Impuls Kanal KE DUA untuk tampilan Paper
+% %%===========================================================
+%     potong_awal_iter1= potong_awal1  ;
+%     bin_awl1=potong_awal_iter1*FsCor;
+%     bin_ahr1=(0.1*FsCor)+ bin_awl1;  % bin akhir juga menentukan durasi/length observasi bisa dikurangi
+%     temp_htDisplay=PDP_xyS2(bin_awl1:bin_ahr1,1);
+%     kontur_hasil_Dis(:,1)=temp_htDisplay;  
+%     
+%     potong_awal_iter2= potong_awal1+0.398;
+%     bin_awl2=potong_awal_iter2*FsCor;
+%     bin_ahr2=(0.1*FsCor)+ bin_awl2;  % bin akhir juga menentukan durasi/length observasi bisa dikurangi
+%     temp_htDisplay=PDP_xyS2(bin_awl2:bin_ahr2,1);
+%     kontur_hasil_Dis(:,2)=temp_htDisplay;
+% 
+%     potong_awal_iter3= potong_awal_iter2+0.398;
+%     bin_awl3=potong_awal_iter3*FsCor;
+%     bin_ahr3=(0.1*FsCor)+ bin_awl3;  % bin akhir juga menentukan durasi/length observasi bisa dikurangi
+%     temp_htDisplay=PDP_xyS2(bin_awl3:bin_ahr3,1);
+%     kontur_hasil_Dis(:,3)=temp_htDisplay;
+%     
+%     potong_awal_iter4= potong_awal_iter3+0.398;
+%     bin_awl4=potong_awal_iter4*FsCor;
+%     bin_ahr4=(0.1*FsCor)+ bin_awl4;  % bin akhir juga menentukan durasi/length observasi bisa dikurangi
+%     temp_htDisplay=PDP_xyS2(bin_awl4:bin_ahr4,1);
+%     kontur_hasil_Dis(:,4)=temp_htDisplay;
+%     
+%     potong_awal_iter5= potong_awal_iter4+0.398;
+%     bin_awl5=potong_awal_iter5*FsCor;
+%     bin_ahr5=(0.1*FsCor)+ bin_awl5;  % bin akhir juga menentukan durasi/length observasi bisa dikurangi
+%     temp_htDisplay=PDP_xyS2(bin_awl5:bin_ahr5,1);
+%     kontur_hasil_Dis(:,5)=temp_htDisplay;
+%  
+% 
+% %Plot multiple 2D plot in one frame
+% t_plotlima=(0:numel(kontur_hasil_Dis(:,1))-1)/FsCor;
+% figure()
+% plot3(t_plotlima,ones(numel(t_plotlima),5).*[0 1 2 3 4 ],[db(abs(kontur_hasil_Dis(:,1))), db(abs(kontur_hasil_Dis(:,2))), db(abs(kontur_hasil_Dis(:,3))), db(abs(kontur_hasil_Dis(:,4))), db(abs(kontur_hasil_Dis(:,5))) ]);
+% grid on
+% zlabel('Normalize Power') 
+% set(gca, 'ZDir','reverse'); set(gca,'ZTickLabel',[]); set(gca,'YTickLabel',[1 2 3 4 5]);
+% 
+% % Untuk gambar per impuls yang akan disimpan dan dibuat animasi
+% for jk=1:5
+%     f = figure;  
+%     f.Position = [50 350 1280 330]; 
+%     tmpX = db(abs(kontur_hasil_Dis(:,jk)));  
+%     plot(t_plotlima,tmpX);
+%     judul=join(['CIR #' num2str(jk) tgl waktu  ]);
+%     title(judul);
+%     xlabel('Second'); ylabel('Normalized Power');
+%     hold on
+%     % Convert data sehingga dapat dilihat maksimum peak bukan minimum
+%     DataInv = 1.01*max(tmpX) - tmpX;
+%     % Mencari peaks dengan batas waktu sesuai resolusi time delay yakni 0,0001 
+%     [pks,locs] = findpeaks(DataInv,FsRtl2,'MinPeakDistance',0.0001);     
+%     % sort dari yang tertinggi dulu
+%     matrik_peak=[locs pks];
+%     mat_sort=sortrows(matrik_peak,-2);
+%     % cari indeks di plot tiga nya
+%     idx_peak= interp1(t_plotlima,1:length(t_plotlima),mat_sort(1:12,1));
+%     val_peaks=tmpX(idx_peak);
+%     plot(t_plotlima(idx_peak),val_peaks,'ro');
+%     
+%     %add text nilai waktu di graphik
+%   text(t_plotlima(idx_peak), val_peaks, compose('%f',  mat_sort(1:12,1)), 'HorizontalAlign','center', 'VerticalAlign','bottom')
+%   %text(t_plottiga(idx_peak), val_peaks, compose('%0.2f',  val_peaks), 'HorizontalAlign','center', 'VerticalAlign','top')
+%         
+%     set(gca, 'YDir','reverse')  % Fliping vertical supaya enak dilihat
+%     
+%     % Zoom in pada plot impuls target saja
+%     [M,I] = min(db(abs(kontur_hasil_Dis(:,jk))));  % cari indeks peak sinyal (reverse0
+%     bts_b=t_plotlima(I)-0.01;
+%     bts_a=t_plotlima(I)+0.01;
+%     xlim([bts_b bts_a])
+%     set(gca, 'YTickLabel', [])
+% 
+%     grid on 
+%     
+%     %simpan sebagai gambar
+% %     namagbr=join([tgl waktu num2str(jk) '.png']);
+% %     saveas(gcf,namagbr)
+% end
